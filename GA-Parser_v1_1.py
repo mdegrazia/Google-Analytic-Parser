@@ -32,6 +32,14 @@ import urllib
 import datetime
 import os
 
+# Needed for ewf support.
+try:
+    ewf_available = True
+    import pyewf
+    import pytsk3
+except:
+    ewf_available = False
+
 #########################  Functions to process individual cookie values (utma, utmb and utmz)   ##########################
 
 #parse the utma values. Takes the utma value as input
@@ -696,6 +704,23 @@ def process_utm_gif_ASCII(pattern, chunk):
             output_utm_gif.write(utm_gif["utmr_full_referral"]+ "\n")
 
 
+# From https://code.google.com/p/libewf/wiki/pyewf
+# Added by chapinb
+if ewf_available:
+    class Ewf_Img_Info(pytsk3.Img_Info):
+      def __init__(self, filename):
+        self.ewf_handle = pyewf.handle()
+        filenames = pyewf.glob(filename)
+        self.ewf_handle.open(filenames)
+        super(Ewf_Img_Info, self).__init__()
+
+      def read(self, offset, size):
+        self.ewf_handle.seek(offset)
+        return self.ewf_handle.read(size)
+
+      def get_size(self):
+        return self.ewf_handle.get_media_size()
+
 #########################  Main   ##########################
 
 
@@ -727,6 +752,8 @@ input_parser.add_option("--firefox", action="store_true", dest="firefox", help =
 input_parser.add_option("--ie", action="store_true", dest="ie", help = "choose one or more")
 input_parser.add_option("--gif",action = "store_true", dest="gif_cache", help = "choose one or more")
 input_parser.add_option("--apple", action="store_true", dest="apple", help = "choose one or more")
+if ewf_available:
+    input_parser.add_option("--ewf", action="store_true", dest="ewf", help = "Select this is the input file is EWF format. Libewf must be installeds")
 (options,args)=input_parser.parse_args()
 
 chrome = options.chrome
@@ -736,6 +763,8 @@ ie = options.ie
 apple = options.apple
 output_folder = options.output
 directory = options.directory
+if ewf_available:
+    ewf_file = options.ewf
 
 #no arguments given by user,exit
 if len(sys.argv) == 1:
@@ -750,11 +779,11 @@ if chrome != True and firefox != True and gif_cache != True and ie != True and a
 print options.output
 
 if "\\" in options.output:
-	seperator = "\\"
+    seperator = "\\"
 if '/' in options.output:
-	seperator = "/"
-	
-	
+    seperator = "/"
+    
+    
 #open files for output
 if chrome or firefox or ie or apple:
     output_utmz = open(output_folder + seperator + "utmz.tsv", "a")
@@ -900,9 +929,17 @@ if directory != None:
 if options.input_file:
     file_object = open(options.input_file, 'rb')
     current_file = options.input_file
-    
+
+    # Handle ewf files.
+    if ewf_file:
+        file_object = Ewf_Img_Info(options.input_file)
+        off = 0
     while 1:
-        chunk = file_object.read(maxfilesize)
+        if ewf_file:
+            off = maxfilesize + off
+            chunk = file_object.read(off, maxfilesize)
+        else:
+            chunk = file_object.read(maxfilesize)
         if not chunk: break
         
         if chrome:
@@ -931,6 +968,7 @@ if options.input_file:
             process_utm_gif_ASCII(gif_cache_pattern_ASCII ,chunk)
         
         loop = loop+1   
+
 
     file_object.close(  )    
 
