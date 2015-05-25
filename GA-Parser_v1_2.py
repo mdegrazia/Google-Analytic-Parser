@@ -765,8 +765,11 @@ output_folder = options.output
 directory = options.directory
 if ewf_available:
     ewf_file = options.ewf
+else:
+	ewf_file = False
 
-#no arguments given by user,exit
+
+#no arguments givene by user,exit
 if len(sys.argv) == 1:
     input_parser.print_help()
     exit(0)
