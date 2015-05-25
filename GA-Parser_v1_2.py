@@ -934,6 +934,8 @@ if options.input_file:
     if ewf_file:
         file_object = Ewf_Img_Info(options.input_file)
         off = 0
+        loop = loop + 1
+        
     while 1:
         if ewf_file:
             off = maxfilesize + off
